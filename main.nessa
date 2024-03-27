@@ -1,0 +1,15 @@
+import * from printing;
+
+import * from /genetic;
+
+let fit = (c: &Chromosome) -> Float {
+    let res = 0.0;
+
+    for i in c {
+        res := res + i;
+    }
+
+    return abs(1.0 - res); // sum must be one
+};
+
+optimize(*fit, *random_selection, uniform_mutation(0.005), 10, 100, 50);

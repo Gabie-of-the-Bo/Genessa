@@ -1,0 +1,95 @@
+import * from range;
+import * from array_extensions;
+
+// types
+
+type Chromosome = Array<Float>;
+type FitnessFunc = (&Chromosome) => Float;
+type CrossoverFunc = (&Chromosome, &Chromosome) => Chromosome;
+type MutationFunc = (&Chromosome) => Chromosome;
+
+// Chromosome generation
+
+fn random_chromosome(size: Int) -> Chromosome {
+    let res = arr_with_capacity<Float>(*size);
+
+    for i in range(*size) {
+        res.push(rand());
+    }
+
+    return move(res);
+}
+
+// Crossover functions
+
+let random_selection = (a: &Chromosome, b: &Chromosome) -> Chromosome {
+    let res = arr_with_capacity<Float>(a.len());
+
+    for i in range(a.len()) {
+        if rand() < 0.5 {
+            res.push(*a[*i]);
+
+        } else {
+            res.push(*b[*i]);
+        }
+    }
+
+    return move(res);
+};
+
+// Mutation functions
+
+fn uniform_mutation(amp: Float) -> MutationFunc {
+    return [amp](c: &Chromosome) -> Chromosome {
+        let res = arr_with_capacity<Float>(c.len());
+
+        for i in range(c.len()) {
+            if rand() < 0.5 {
+                res.push(*c[*i] + rand() * amp);
+
+            } else {
+                res.push(*c[*i] - rand() * amp);
+            }
+        }
+
+        return move(res);
+    };
+}
+
+// Main algorithm
+
+fn optimize(fitness: FitnessFunc, crossover: CrossoverFunc, mutation: MutationFunc, s: Int, p: Int, g: Int) -> Chromosome {
+    let pop = arr_with_capacity<Chromosome>(*p);
+    pop.fill_with([s](i: Int) random_chromosome(*s));
+
+    for gen in range(*g) {
+        pop.sort_by(*fitness);
+
+        print("Generation ");
+        print(gen);
+        print(" (Min fitness ");
+        print(fitness(pop[0].demut()));
+        print(")\n");
+
+        let elitismLimit = floor(p * 0.1);
+        let crossoverLimit = floor(p * 0.5);
+        let new_pop = arr_with_capacity<Chromosome>(*p);
+
+        for i in range(*elitismLimit) {
+            new_pop.push(*pop[*i]);
+        }
+
+        while new_pop.len() != p {
+            let a = rand_int(0, *crossoverLimit);
+            let b = rand_int(0, *crossoverLimit);
+
+            let new = crossover(pop[*a].demut(), pop[*b].demut());
+
+            new_pop.push(mutation(new.demut()));
+        }
+
+        pop = move(new_pop);
+    }
+
+    return move(pop[0]);
+}
