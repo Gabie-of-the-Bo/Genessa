@@ -1,8 +1,9 @@
+import * from hashset;
 import * from printing;
 
 import * from /genetic;
 
-let fit = (c: &Chromosome) -> Float {
+let fitFloat = (c: &Chromosome<Float>) -> Float {
     let res = 0.0;
 
     for i in c {
@@ -12,4 +13,71 @@ let fit = (c: &Chromosome) -> Float {
     return abs(1.0 - res); // sum must be one
 };
 
-optimize(*fit, *random_selection, uniform_mutation(0.005), 10, 100, 50);
+fn is_queen_check(col_0: Int, row_0: Int, col_1: Int, row_1: Int) -> Bool {
+    let amp_row = abs(row_0 - row_1);
+    let amp_col = abs(col_0 - col_1);
+
+    return amp_col == amp_row;
+}
+
+fn get_checks(c: &Chromosome<Int>) -> Int {
+    let res = 0;
+    let col = 0;
+
+    for i in c {
+        let col_2 = 0;
+
+        for j in c {
+            if col != col_2 && is_queen_check(*col, *i, *col_2, *j) {
+                res.inc();
+            }
+
+            col_2.inc();
+        }
+
+        col.inc();
+    }
+
+    return *res;
+}
+
+let fitInt = (c: &Chromosome<Int>) -> Float {
+    let seen = hashset<Int>();
+    let count = 0;
+    let rest = 0;
+
+    // Bounds and different numbers
+    let l = c.len() - 1;
+
+    for i in c {
+        if !seen.demut().contains(i) {
+            seen.add(*i);
+            count.inc();
+
+            if i < 0 {
+                rest := (rest - i) * 10;
+            
+            } else if i > l {
+                rest := (rest + (i - l)) * 10;
+            }
+        }
+    }
+
+    // Checks
+    rest := rest + get_checks(c);
+
+    // All positions taken
+    rest := rest + (c.len() - count) * 50;
+
+    return rest.as_float(); // sum must be ten
+};
+
+let G = 1000;
+let P = 50;
+let S = 20;
+
+// let c = optimize(*fitFloat, random_selection<Float>(), uniform_mutation<Float>(0.05, 0.25), 0.0, 1.0, *S, *P, *G);
+
+let c = optimize<Int>(*fitInt, random_selection<Int>(), permutation_mutation<Int>(), 0, *S, *S, *P, *G);
+
+println(*c);

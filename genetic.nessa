@@ -1,20 +1,22 @@
 import * from range;
 import * from array_extensions;
 
+import * from /random;
+
 // types
 
-type Chromosome = Array<Float>;
-type FitnessFunc = (&Chromosome) => Float;
-type CrossoverFunc = (&Chromosome, &Chromosome) => Chromosome;
-type MutationFunc = (&Chromosome) => Chromosome;
+type Chromosome<T> = Array<'T [Random]>;
+type FitnessFunc<T> = (&Chromosome<'T [Random]>) => Float;
+type CrossoverFunc<T> = (&Chromosome<'T [Random]>, &Chromosome<'T [Random]>) => Chromosome<'T [Random]>;
+type MutationFunc<T> = (&Chromosome<'T [Random]>) => Chromosome<'T [Random]>;
 
 // Chromosome generation
 
-fn random_chromosome(size: Int) -> Chromosome {
-    let res = arr_with_capacity<Float>(*size);
+fn<T> random_chromosome(size: Int, min: 'T, max: 'T) -> Chromosome<'T [Random]> {
+    let res = arr_with_capacity<'T>(*size);
 
     for i in range(*size) {
-        res.push(rand());
+        res.push(generate_number(*min, *max));
     }
 
     return move(res);
@@ -22,33 +24,16 @@ fn random_chromosome(size: Int) -> Chromosome {
 
 // Crossover functions
 
-let random_selection = (a: &Chromosome, b: &Chromosome) -> Chromosome {
-    let res = arr_with_capacity<Float>(a.len());
+fn<T> random_selection() -> CrossoverFunc<'T> {
+    return (a: &Chromosome<'T>, b: &Chromosome<'T>) -> Chromosome<'T> {
+        let res = arr_with_capacity<'T>(a.len());
 
-    for i in range(a.len()) {
-        if rand() < 0.5 {
-            res.push(*a[*i]);
-
-        } else {
-            res.push(*b[*i]);
-        }
-    }
-
-    return move(res);
-};
-
-// Mutation functions
-
-fn uniform_mutation(amp: Float) -> MutationFunc {
-    return [amp](c: &Chromosome) -> Chromosome {
-        let res = arr_with_capacity<Float>(c.len());
-
-        for i in range(c.len()) {
+        for i in range(a.len()) {
             if rand() < 0.5 {
-                res.push(*c[*i] + rand() * amp);
+                res.push(*a[*i]);
 
             } else {
-                res.push(*c[*i] - rand() * amp);
+                res.push(*b[*i]);
             }
         }
 
@@ -56,11 +41,47 @@ fn uniform_mutation(amp: Float) -> MutationFunc {
     };
 }
 
+// Mutation functions
+
+fn<T> uniform_mutation(amp: 'T, prob: Float) -> MutationFunc<'T> {
+    return [amp, prob](c: &Chromosome<'T>) -> Chromosome<'T> {
+        let res = arr_with_capacity<'T>(c.len());
+
+        for i in range(c.len()) {
+            if rand() < prob {
+                res.push(*c[*i] + generate_number(-amp, *amp));
+            
+            } else {
+                res.push(*c[*i]);
+            }
+        }
+
+        return move(res);
+    };
+}
+
+fn<T> permutation_mutation() -> MutationFunc<'T> {
+    return (c: &Chromosome<'T>) -> Chromosome<'T> {
+        let res = *c;
+
+        let a = rand_int(0, c.len());
+        let b = *a;
+
+        while b == a {
+            b = rand_int(0, c.len());
+        }
+
+        swap(res[*a], res[*b]);
+
+        return move(res);
+    };
+}
+
 // Main algorithm
 
-fn optimize(fitness: FitnessFunc, crossover: CrossoverFunc, mutation: MutationFunc, s: Int, p: Int, g: Int) -> Chromosome {
-    let pop = arr_with_capacity<Chromosome>(*p);
-    pop.fill_with([s](i: Int) random_chromosome(*s));
+fn<T> optimize(fitness: FitnessFunc<'T>, crossover: CrossoverFunc<'T>, mutation: MutationFunc<'T>, min: 'T, max: 'T, s: Int, p: Int, g: Int) -> Chromosome<'T> {
+    let pop = arr_with_capacity<Chromosome<'T>>(*p);
+    pop.fill_with([s, min, max](i: Int) random_chromosome<'T>(*s, *min, *max));
 
     for gen in range(*g) {
         pop.sort_by(*fitness);
@@ -72,11 +93,16 @@ fn optimize(fitness: FitnessFunc, crossover: CrossoverFunc, mutation: MutationFu
         print(")\n");
 
         let elitismLimit = floor(p * 0.1);
+        let randomLimit = floor(p * 0.1);
         let crossoverLimit = floor(p * 0.5);
-        let new_pop = arr_with_capacity<Chromosome>(*p);
+        let new_pop = arr_with_capacity<Chromosome<'T>>(*p);
 
         for i in range(*elitismLimit) {
             new_pop.push(*pop[*i]);
+        }
+
+        for i in range(*randomLimit) {
+            new_pop.push(random_chromosome<'T>(*s, *min, *max));
         }
 
         while new_pop.len() != p {

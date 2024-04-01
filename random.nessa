@@ -1,0 +1,14 @@
+interface Random {
+    fn generate_number(min: Self, max: Self) -> Self;
+}
+
+fn generate_number(min: Int, max: Int) -> Int {
+    return rand_int(*min, *max);
+}
+
+fn generate_number(min: Float, max: Float) -> Float {
+    return rand() * (max - min) + min;
+}
+
+implement Random for Int;
+implement Random for Float;
