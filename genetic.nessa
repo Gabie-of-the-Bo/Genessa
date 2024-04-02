@@ -3,12 +3,31 @@ import * from array_extensions;
 
 import * from /random;
 
-// types
+// Types
 
-type Chromosome<T> = Array<'T [Random]>;
+class Chromosome<T> {
+    genes: Array<'T [Random]>;
+    fit: Float;
+    has_fit: Bool;
+}
+
 type FitnessFunc<T> = (&Chromosome<'T [Random]>) => Float;
 type CrossoverFunc<T> = (&Chromosome<'T [Random]>, &Chromosome<'T [Random]>) => Chromosome<'T [Random]>;
 type MutationFunc<T> = (&Chromosome<'T [Random]>) => Chromosome<'T [Random]>;
+type SelectionFunc<T> = (&Array<Chromosome<'T [Random]>>) => &Chromosome<'T [Random]>;
+
+// Class functions
+
+fn<T> Chromosome(genes: Array<'T [Random]>) -> Chromosome<'T> {
+    return Chromosome(move(genes), 0.0, false);
+}
+
+fn<T> calculate_fitness(c: @Chromosome<'T>, f: FitnessFunc<'T>) {
+    if !c.has_fit() {
+        c.fit() := f(c.demut());
+        c.has_fit() := true;
+    }
+}
 
 // Chromosome generation
 
@@ -19,25 +38,42 @@ fn<T> random_chromosome(size: Int, min: 'T, max: 'T) -> Chromosome<'T [Random]> 
         res.push(generate_number(*min, *max));
     }
 
-    return move(res);
+    return Chromosome<'T>(move(res));
 }
 
 // Crossover functions
 
-fn<T> random_selection() -> CrossoverFunc<'T> {
+fn<T> random_crossover() -> CrossoverFunc<'T> {
     return (a: &Chromosome<'T>, b: &Chromosome<'T>) -> Chromosome<'T> {
-        let res = arr_with_capacity<'T>(a.len());
+        let res = arr_with_capacity<'T>(a.genes().len());
 
-        for i in range(a.len()) {
+        for i in range(a.genes().len()) {
             if rand() < 0.5 {
-                res.push(*a[*i]);
+                res.push(*(a.genes())[*i]);
 
             } else {
-                res.push(*b[*i]);
+                res.push(*(b.genes())[*i]);
             }
         }
 
-        return move(res);
+        return Chromosome(move(res));
+    };
+}
+
+fn<T> single_point_crossover() -> CrossoverFunc<'T> {
+    return (a: &Chromosome<'T>, b: &Chromosome<'T>) -> Chromosome<'T> {
+        let res = arr_with_capacity<'T>(a.genes().len());
+        let idx = rand_int(0, a.genes().len());
+
+        for i in range(*idx) {
+            res.push(*(a.genes())[*i]);
+        }
+
+        for i in range(*idx, b.genes().len()) {
+            res.push(*(b.genes())[*i]);
+        }
+
+        return Chromosome(move(res));
     };
 }
 
@@ -45,18 +81,18 @@ fn<T> random_selection() -> CrossoverFunc<'T> {
 
 fn<T> uniform_mutation(amp: 'T, prob: Float) -> MutationFunc<'T> {
     return [amp, prob](c: &Chromosome<'T>) -> Chromosome<'T> {
-        let res = arr_with_capacity<'T>(c.len());
+        let res = arr_with_capacity<'T>(c.genes().len());
 
-        for i in range(c.len()) {
+        for i in range(c.genes().len()) {
             if rand() < prob {
-                res.push(*c[*i] + generate_number(-amp, *amp));
+                res.push(*(c.genes())[*i] + generate_number(-amp, *amp));
             
             } else {
-                res.push(*c[*i]);
+                res.push(*(c.genes())[*i]);
             }
         }
 
-        return move(res);
+        return Chromosome(move(res));
     };
 }
 
@@ -64,33 +100,77 @@ fn<T> permutation_mutation() -> MutationFunc<'T> {
     return (c: &Chromosome<'T>) -> Chromosome<'T> {
         let res = *c;
 
-        let a = rand_int(0, c.len());
+        let a = rand_int(0, c.genes().len());
         let b = *a;
 
         while b == a {
-            b = rand_int(0, c.len());
+            b = rand_int(0, c.genes().len());
         }
 
-        swap(res[*a], res[*b]);
+        swap((res.genes())[*a], (res.genes())[*b]);
 
         return move(res);
     };
 }
 
+// Selection functions
+
+fn<T> random_selection() -> SelectionFunc<'T> {
+    return (cs: &Array<Chromosome<'T [Random]>>) -> &Chromosome<'T> {
+        return cs[rand_int(0, cs.len())];
+    };
+}
+
+fn<T> tournament_selection_direct(cs: &Array<Chromosome<'T [Random]>>, k: Int, d: Int) -> &Chromosome<'T> {
+    if d <= 1 {
+        return cs[rand_int(0, cs.len())];
+
+    } else {
+        let min_fit = 10000000000.0;
+        let min_c = cs[0];
+
+        for i in range(*k) {
+            let c = tournament_selection_direct(cs, *k, d - 1);
+
+            if c.fit() < min_fit {
+                min_fit := *c.fit();
+                min_c = c;
+            }
+        }
+
+        return min_c;
+    }
+}
+
+fn<T> tournament_selection(k: Int, d: Int) -> SelectionFunc<'T> {
+    return [k, d](cs: &Array<Chromosome<'T [Random]>>) -> &Chromosome<'T> {
+        return tournament_selection_direct(cs, *k, *d);
+    };
+}
+
 // Main algorithm
 
-fn<T> optimize(fitness: FitnessFunc<'T>, crossover: CrossoverFunc<'T>, mutation: MutationFunc<'T>, min: 'T, max: 'T, s: Int, p: Int, g: Int) -> Chromosome<'T> {
+fn<T> optimize(fitness: FitnessFunc<'T>, crossover: CrossoverFunc<'T>, mutation: MutationFunc<'T>, selection: SelectionFunc<'T>, min: 'T, max: 'T, s: Int, p: Int, g: Int) -> Chromosome<'T> {
     let pop = arr_with_capacity<Chromosome<'T>>(*p);
     pop.fill_with([s, min, max](i: Int) random_chromosome<'T>(*s, *min, *max));
 
     for gen in range(*g) {
-        pop.sort_by(*fitness);
+        // Calculate fitness and sort
+        for p in pop {
+            p.calculate_fitness(*fitness);
+        }
+
+        pop.sort_by((c: &Chromosome<'T>) *c.fit());
 
         print("Generation ");
         print(gen);
         print(" (Min fitness ");
-        print(fitness(pop[0].demut()));
+        print(pop[0].fit());
         print(")\n");
+
+        if pop[0].fit() == 0.0 {
+            break;
+        }
 
         let elitismLimit = floor(p * 0.1);
         let randomLimit = floor(p * 0.1);
@@ -106,10 +186,10 @@ fn<T> optimize(fitness: FitnessFunc<'T>, crossover: CrossoverFunc<'T>, mutation:
         }
 
         while new_pop.len() != p {
-            let a = rand_int(0, *crossoverLimit);
-            let b = rand_int(0, *crossoverLimit);
+            let a = selection(pop.demut());
+            let b = selection(pop.demut());
 
-            let new = crossover(pop[*a].demut(), pop[*b].demut());
+            let new = crossover(a, b);
 
             new_pop.push(mutation(new.demut()));
         }
