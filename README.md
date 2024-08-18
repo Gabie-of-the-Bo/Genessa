@@ -1,2 +1,2 @@
-# Genessa
-Small genetic algorithm library programmed in Nessa
+# RyGenes
+Small genetic algorithm library programmed in Ryna
