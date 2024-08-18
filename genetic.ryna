@@ -23,9 +23,9 @@ fn<T> Chromosome(genes: Array<'T [Random]>) -> Chromosome<'T> {
 }
 
 fn<T> calculate_fitness(c: @Chromosome<'T>, f: FitnessFunc<'T>) {
-    if !c.has_fit() {
-        c.fit() := f(c.demut());
-        c.has_fit() := true;
+    if !c.has_fit {
+        c.fit = f(c.demut());
+        c.has_fit = true;
     }
 }
 
@@ -45,14 +45,14 @@ fn<T> random_chromosome(size: Int, min: 'T, max: 'T) -> Chromosome<'T [Random]> 
 
 fn<T> random_crossover() -> CrossoverFunc<'T> {
     return (a: &Chromosome<'T>, b: &Chromosome<'T>) -> Chromosome<'T> {
-        let res = arr_with_capacity<'T>(a.genes().len());
+        let res = arr_with_capacity<'T>(a.genes.len());
 
-        for i in range(a.genes().len()) {
+        for i in range(a.genes.len()) {
             if rand() < 0.5 {
-                res.push(*(a.genes())[*i]);
+                res.push(*(a.genes)[*i]);
 
             } else {
-                res.push(*(b.genes())[*i]);
+                res.push(*(b.genes)[*i]);
             }
         }
 
@@ -62,15 +62,15 @@ fn<T> random_crossover() -> CrossoverFunc<'T> {
 
 fn<T> single_point_crossover() -> CrossoverFunc<'T> {
     return (a: &Chromosome<'T>, b: &Chromosome<'T>) -> Chromosome<'T> {
-        let res = arr_with_capacity<'T>(a.genes().len());
-        let idx = rand_int(0, a.genes().len());
+        let res = arr_with_capacity<'T>(a.genes.len());
+        let idx = rand_int(0, a.genes.len());
 
         for i in range(*idx) {
-            res.push(*(a.genes())[*i]);
+            res.push(*(a.genes)[*i]);
         }
 
-        for i in range(*idx, b.genes().len()) {
-            res.push(*(b.genes())[*i]);
+        for i in range(*idx, b.genes.len()) {
+            res.push(*(b.genes)[*i]);
         }
 
         return Chromosome(move(res));
@@ -81,14 +81,14 @@ fn<T> single_point_crossover() -> CrossoverFunc<'T> {
 
 fn<T> uniform_mutation(amp: 'T, prob: Float) -> MutationFunc<'T> {
     return [amp, prob](c: &Chromosome<'T>) -> Chromosome<'T> {
-        let res = arr_with_capacity<'T>(c.genes().len());
+        let res = arr_with_capacity<'T>(c.genes.len());
 
-        for i in range(c.genes().len()) {
+        for i in range(c.genes.len()) {
             if rand() < prob {
-                res.push(*(c.genes())[*i] + generate_number(-amp, *amp));
+                res.push(*(c.genes)[*i] + generate_number(-amp, *amp));
             
             } else {
-                res.push(*(c.genes())[*i]);
+                res.push(*(c.genes)[*i]);
             }
         }
 
@@ -100,14 +100,14 @@ fn<T> permutation_mutation() -> MutationFunc<'T> {
     return (c: &Chromosome<'T>) -> Chromosome<'T> {
         let res = *c;
 
-        let a = rand_int(0, c.genes().len());
+        let a = rand_int(0, c.genes.len());
         let b = *a;
 
         while b == a {
-            b = rand_int(0, c.genes().len());
+            b = rand_int(0, c.genes.len());
         }
 
-        swap((res.genes())[*a], (res.genes())[*b]);
+        swap((res.genes)[*a], (res.genes)[*b]);
 
         return move(res);
     };
@@ -132,8 +132,8 @@ fn<T> tournament_selection_direct(cs: &Array<Chromosome<'T [Random]>>, k: Int, d
         for i in range(*k) {
             let c = tournament_selection_direct(cs, *k, d - 1);
 
-            if c.fit() < min_fit {
-                min_fit := *c.fit();
+            if c.fit < min_fit {
+                min_fit := *c.fit;
                 min_c = c;
             }
         }
@@ -160,15 +160,15 @@ fn<T> optimize(fitness: FitnessFunc<'T>, crossover: CrossoverFunc<'T>, mutation:
             p.calculate_fitness(*fitness);
         }
 
-        pop.sort_by((c: &Chromosome<'T>) *c.fit());
+        pop.sort_by((c: &Chromosome<'T>) *c.fit);
 
         print("Generation ");
         print(gen);
         print(" (Min fitness ");
-        print(pop[0].fit());
+        print(pop[0].fit);
         print(")\n");
 
-        if pop[0].fit() == 0.0 {
+        if pop[0].fit == 0.0 {
             break;
         }
 

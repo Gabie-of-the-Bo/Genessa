@@ -6,7 +6,7 @@ import * from /genetic;
 let fitFloat = (c: &Chromosome<Float>) -> Float {
     let res = 0.0;
 
-    for i in c.genes() {
+    for i in c.genes {
         res := res + i;
     }
 
@@ -24,10 +24,10 @@ fn get_checks(c: &Chromosome<Int>) -> Int {
     let res = 0;
     let col = 0;
 
-    for i in c.genes() {
+    for i in c.genes {
         let col_2 = 0;
 
-        for j in c.genes() {
+        for j in c.genes {
             if col != col_2 && is_queen_check(*col, *i, *col_2, *j) {
                 res.inc();
             }
@@ -47,9 +47,9 @@ let fitInt = (c: &Chromosome<Int>) -> Float {
     let rest = 0;
 
     // Bounds and different numbers
-    let l = c.genes().len() - 1;
+    let l = c.genes.len() - 1;
 
-    for i in c.genes() {
+    for i in c.genes {
         if !seen.demut().contains(i) {
             seen.add(*i);
             count.inc();
@@ -67,7 +67,7 @@ let fitInt = (c: &Chromosome<Int>) -> Float {
     rest := rest + get_checks(c);
 
     // All positions taken
-    rest := rest + (c.genes().len() - count) * 50;
+    rest := rest + (c.genes.len() - count) * 50;
 
     return rest.as_float(); // sum must be ten
 };
@@ -80,4 +80,4 @@ let S = 20;
 
 let c = optimize<Int>(*fitInt, random_crossover<Int>(), permutation_mutation<Int>(), tournament_selection<Int>(20, 2), 0, *S, *S, *P, *G);
 
-println(*c.genes());
+println(*c.genes);
